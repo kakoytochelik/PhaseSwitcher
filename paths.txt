@@ -1,0 +1,2 @@
+C:/Git/1cDrive/tests/RegressionTests/Yaml/Drive/
+C:/Git/1cDrive/tests/RegressionTests_Disabled/Yaml/Drive/
