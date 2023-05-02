@@ -1,2 +1,17 @@
-C:/Git/1cDrive/tests/RegressionTests/Yaml/Drive/
-C:/Git/1cDrive/tests/RegressionTests_Disabled/Yaml/Drive/
+Path to Core Drive:
+C:/Git/1cDrive/
+
+Path to Drive TE:
+C:/Git/1cDriveTurkey/
+
+Path to Drive CE:
+C:/Git/1cDriveColumbia/
+
+Path to Drive GE:
+C:/Git/1cDriveGermany/
+
+Path to Drive PE:
+C:/Git/1cDrivePoland/
+
+
+PLEASE NOTE: IN PATHS USE ONLY "/", NOT "\"
