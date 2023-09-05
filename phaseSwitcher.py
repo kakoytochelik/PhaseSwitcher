@@ -3,6 +3,8 @@ import shutil
 from pathlib import Path
 import json
 import os
+import pyperclip
+import uuid
 
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
@@ -23,13 +25,26 @@ class tab(QTabWidget):
 
         self.GetPaths(1)
 
-        self.setWindowTitle('Phase Switcher 3.1')
+        self.setWindowTitle('Phase Switcher 4.0')
         self.setGeometry(500, 200, 400, 350)
 
         self.tableLayout = QVBoxLayout()
         self.headerLayout = QHBoxLayout()
+        self.guidLayout = QHBoxLayout()
         self.runLayout = QHBoxLayout()
         self.tabs = QTabWidget()
+
+        self.guidField = QLineEdit(self)
+        self.guidField.setReadOnly(True)
+        self.guidField.setPlaceholderText("GUID")
+
+        self.guidGenerateButton = QPushButton()
+        self.guidGenerateButton.setIcon(QIcon(resource_path('Refresh.png')))
+        self.guidGenerateButton.clicked.connect(lambda:self.GenerateGUID())
+
+        self.guidCopyButton = QPushButton()
+        self.guidCopyButton.setIcon(QIcon(resource_path('copy.png')))
+        self.guidCopyButton.clicked.connect(lambda:self.CopyGUID())
 
         self.markall = QCheckBox('Select all', self)
         self.markall.clicked.connect(lambda: self.MarkUnmarkAll(self.markall))
@@ -39,7 +54,7 @@ class tab(QTabWidget):
         self.setDefault.setIcon(QIcon(resource_path('defaults.png')))
 
         self.cb = QComboBox()
-        self.cb.addItems(["Core Drive", "Turkey", "Colombia", "Germany", "Poland"])
+        self.cb.addItems(["Core Drive", "Turkey", "Colombia", "Germany", "Poland", "Mexico"])
         self.cb.currentIndexChanged.connect(lambda: self.ChangeRegion())
 
         self.refresh = QPushButton("Refresh")
@@ -59,6 +74,7 @@ class tab(QTabWidget):
 
         self.setLayout(self.tableLayout)
 
+
         self.tableLayout.addLayout(self.headerLayout)
         self.headerLayout.addWidget(self.cb)
         self.headerLayout.addWidget(self.refresh)
@@ -66,6 +82,11 @@ class tab(QTabWidget):
         self.headerLayout.addWidget(self.markall)
         self.tableLayout.addWidget(self.tabs)
         
+        self.tableLayout.addLayout(self.guidLayout)
+        self.guidLayout.addWidget(self.guidField)
+        self.guidLayout.addWidget(self.guidGenerateButton)
+        self.guidLayout.addWidget(self.guidCopyButton)
+
         self.tableLayout.addLayout(self.runLayout)
         self.runLayout.addWidget(self.run, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
     
@@ -441,7 +462,18 @@ class tab(QTabWidget):
 
         self.PE = QCheckBox('0087_Poland_tests')
         self.marks.append(self.PE)
-        self.PE.clicked.connect(lambda: self.Uncheck(self.PE))  
+        self.PE.clicked.connect(lambda: self.Uncheck(self.PE))
+
+        self.ME = QCheckBox('0089_Mexico_tests')
+        # self.marks.append(self.ME)
+        # self.ME.clicked.connect(lambda: self.Uncheck(self.ME))
+
+        # Temp
+        self.ME.setDisabled(1)
+        self.ME.setChecked(0)
+        # Temp
+
+
 
         layout = QVBoxLayout()
 
@@ -459,6 +491,10 @@ class tab(QTabWidget):
         layout.addWidget(QLabel(''))
         layout.addWidget(QLabel('Poland:'))
         layout.addWidget(self.PE)
+
+        layout.addWidget(QLabel(''))
+        layout.addWidget(QLabel('Mexico:'))
+        layout.addWidget(self.ME)
 
 
 
@@ -619,6 +655,8 @@ class tab(QTabWidget):
             self.GetPaths(10)
         if str(self.cb.currentText()) == "Poland" :
             self.GetPaths(13)
+        if str(self.cb.currentText()) == "Mexico" :
+            self.GetPaths(16)
                    
         self.CreateTabs()
         self.marks_temp = self.marks.copy()
@@ -635,6 +673,15 @@ class tab(QTabWidget):
         print(self.tests_dir_off)
         with open(resource_path('data.json'), 'r') as f:
             self.paths = json.loads(str(f.read()))
+
+    def GenerateGUID(self):
+        self.guid = str(uuid.uuid4())
+        self.guidField.setText(self.guid)
+        pyperclip.copy(self.guid)
+
+    def CopyGUID(self):
+        self.guid = self.guidField.text()
+        pyperclip.copy(self.guid)
 
 def main():
     app = QApplication(sys.argv)

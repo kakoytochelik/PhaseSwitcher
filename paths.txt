@@ -13,5 +13,8 @@ C:/Git/1cDriveGermany/
 Path to Drive PE:
 C:/Git/1cDrivePoland/
 
+Path to Drive PE:
+C:/Git/1cDriveMexico/
+
 
 PLEASE NOTE: IN PATHS USE ONLY "/", NOT "\"
