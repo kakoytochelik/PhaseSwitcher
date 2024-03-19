@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import os
 import pyperclip
+import appdirs
 import uuid
 
 from PyQt6.QtWidgets import *
@@ -13,508 +14,330 @@ from PyQt6 import QtCore
 
 
 
-class tab(QTabWidget):
+class MainWindow(QTabWidget):
+
     def __init__(self):
-        super(tab, self).__init__()
-        
+        super(MainWindow, self).__init__()
+        self.initializeAttributes("Core")
+        self.setupUI()
+
+
+
+    def initializeAttributes(self, region):
         self.marks = []
         self.disabled = []
         self.enabled = []
         self.error = []
         self.skipped = []
+        self.getPaths(region)
+        self.myFont=QFont()
+        self.myFont.setItalic(True)
 
-        self.GetPaths(1)
 
-        self.setWindowTitle('Phase Switcher 4.0')
+
+    def setupUI(self):
+        self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
+        self.setWindowTitle('Phase Switcher 5.1')
         self.setGeometry(500, 200, 400, 350)
 
+        self.createLayout()
+        self.setupWidgets()
+        self.setupConnections()
+        self.setupLayout()
+        self.checkOnStart()
+
+
+
+    def createLayout(self):
         self.tableLayout = QVBoxLayout()
         self.headerLayout = QHBoxLayout()
         self.guidLayout = QHBoxLayout()
         self.runLayout = QHBoxLayout()
         self.tabs = QTabWidget()
 
-        self.guidField = QLineEdit(self)
-        self.guidField.setReadOnly(True)
-        self.guidField.setPlaceholderText("GUID")
-
-        self.guidGenerateButton = QPushButton()
-        self.guidGenerateButton.setIcon(QIcon(resource_path('Refresh.png')))
-        self.guidGenerateButton.clicked.connect(lambda:self.GenerateGUID())
-
-        self.guidCopyButton = QPushButton()
-        self.guidCopyButton.setIcon(QIcon(resource_path('copy.png')))
-        self.guidCopyButton.clicked.connect(lambda:self.CopyGUID())
-
-        self.markall = QCheckBox('Select all', self)
-        self.markall.clicked.connect(lambda: self.MarkUnmarkAll(self.markall))
-
-        self.setDefault = QPushButton("Default values")
-        self.setDefault.clicked.connect(lambda: self.DefaultCheckboxes(self.setDefault))
-        self.setDefault.setIcon(QIcon(resource_path('defaults.png')))
-
-        self.cb = QComboBox()
-        self.cb.addItems(["Core Drive", "Turkey", "Colombia", "Germany", "Poland", "Mexico"])
-        self.cb.currentIndexChanged.connect(lambda: self.ChangeRegion())
-
-        self.refresh = QPushButton("Refresh")
-        self.refresh.clicked.connect(lambda: self.ChangeRegion())
-        self.refresh.setIcon(QIcon(resource_path('Refresh.png')))
-
-        self.run = QPushButton("Run")
-        self.run.clicked.connect(lambda: self.DoTheThings())
-        self.run.clicked.connect(lambda: self.ShowDialog())
-        self.run.setIcon(QIcon(resource_path('continue.png')))
 
 
-
-        self.CreateTabs()
-        self.marks_temp = self.marks.copy()
-        self.CheckOnStart()
-
-        self.setLayout(self.tableLayout)
-
-
+    def setupLayout(self):
         self.tableLayout.addLayout(self.headerLayout)
-        self.headerLayout.addWidget(self.cb)
-        self.headerLayout.addWidget(self.refresh)
-        self.headerLayout.addWidget(self.setDefault)
-        self.headerLayout.addWidget(self.markall)
+        self.headerLayout.addWidget(self.pathsButton)
+        self.headerLayout.addWidget(self.regionComboBox)
+        self.headerLayout.addWidget(self.refreshButton)
+        self.headerLayout.addWidget(self.setDefaultButton)
+        self.headerLayout.addWidget(self.markAllCheckBox)
         self.tableLayout.addWidget(self.tabs)
-        
+
         self.tableLayout.addLayout(self.guidLayout)
         self.guidLayout.addWidget(self.guidField)
         self.guidLayout.addWidget(self.guidGenerateButton)
         self.guidLayout.addWidget(self.guidCopyButton)
 
         self.tableLayout.addLayout(self.runLayout)
-        self.runLayout.addWidget(self.run, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.runLayout.addWidget(self.runButton, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(self.tableLayout)
+
+
+
+    def setupWidgets(self):
+        self.guidField = QLineEdit(self)
+        self.guidField.setReadOnly(True)
+        self.guidField.setPlaceholderText("GUID")
+
+        self.guidGenerateButton = QPushButton(QIcon(resource_path('res/refresh.png')), '')
+        self.guidCopyButton = QPushButton(QIcon(resource_path('res/copy.png')), '')
+        self.markAllCheckBox = QCheckBox('Select all', self)
+        self.setDefaultButton = QPushButton(QIcon(resource_path('res/defaults.png')), "Default values")
+        self.regionComboBox = QComboBox()
+        self.pathsButton = QPushButton(QIcon(resource_path('res/folder.png')), "")
+        self.regionComboBox.addItems(["Core", "Turkey", "Colombia", "Germany", "Poland", "Mexico"])
+        self.refreshButton = QPushButton(QIcon(resource_path('res/refresh.png')), "Refresh")
+        self.runButton = QPushButton(QIcon(resource_path('res/continue.png')), "Run")
+
+        self.createTabs()
+        self.marks_temp = self.marks.copy()
+
+
+
+    def setupConnections(self):
+        self.guidGenerateButton.clicked.connect(self.generateGUID)
+        self.guidCopyButton.clicked.connect(self.copyGUID)
+        self.markAllCheckBox.clicked.connect(self.markUnmarkAll)
+        self.setDefaultButton.clicked.connect(self.defaultCheckboxes)
+        self.regionComboBox.currentIndexChanged.connect(self.changeRegion)
+        self.refreshButton.clicked.connect(self.changeRegion)
+        self.runButton.clicked.connect(self.doTheThings)
+        self.runButton.clicked.connect(self.showDialog)  
+        self.pathsButton.clicked.connect(self.openPathsWindow)  
+
     
-    def CreateTabs(self):
-        self.tab1 = QWidget()
-        self.tab2 = QWidget()
-        self.tab3 = QWidget()
-        self.tab4 = QWidget()
-        self.tab5 = QWidget()
-        self.tab6 = QWidget()
-        self.tab7 = QWidget()
-        self.tab8 = QWidget()
-        self.tab9 = QWidget()
-        self.tab10 = QWidget()
-        self.tab11 = QWidget()
-        self.tab12 = QWidget()
+    def createTabs(self):
 
-        self.tabs.addTab(self.tab1,"FirstTest")
-        self.tabs.addTab(self.tab2,"Purchases subsystem 1")
-        self.tabs.addTab(self.tab3,"Purchases subsystem 2")
-        self.tabs.addTab(self.tab4,"Purchases subsystem 3")
-        self.tabs.addTab(self.tab5,"Sales tests 1")
-        self.tabs.addTab(self.tab6,"Sales tests 2")
-        self.tabs.addTab(self.tab7,"Sales tests 3")
-        self.tabs.addTab(self.tab8,"Sales tests 4")
-        self.tabs.addTab(self.tab9,"Sales tests 5")
-        self.tabs.addTab(self.tab10,"Smoke tests")
-        self.tabs.addTab(self.tab11,"Templates")
-        self.tabs.addTab(self.tab12,"Regions")
+        tab_info = [
+            ("FirstTest", self.tab1UI),
+            ("Purchases subsystem 1", self.tab2UI),
+            ("Purchases subsystem 2", self.tab3UI),
+            ("Purchases subsystem 3", self.tab4UI),
+            ("Sales tests 1", self.tab5UI),
+            ("Sales tests 2", self.tab6UI),
+            ("Sales tests 3", self.tab7UI),
+            ("Sales tests 4", self.tab8UI),
+            ("Sales tests 5", self.tab9UI),
+            ("Smoke tests", self.tab10UI),
+            ("Templates", self.tab11UI),
+            ("Regions", self.tab12UI)
+        ]
 
-        self.tab1UI()
-        self.tab2UI()
-        self.tab3UI()
-        self.tab4UI()
-        self.tab5UI()
-        self.tab6UI()
-        self.tab7UI()
-        self.tab8UI()
-        self.tab9UI()
-        self.tab10UI()
-        self.tab11UI()
-        self.tab12UI()
+        for idx, (tab_name, tab_ui_method) in enumerate(tab_info, start=1):
+            tab_widget = QWidget()
+            setattr(self, f"tab{idx}", tab_widget)
+            self.tabs.addTab(tab_widget, tab_name)
+            tab_ui_method(tab_widget)
 
-    def tab1UI(self):
-        self.t001 = QCheckBox('001_Company_tests', self)
-        self.marks.append(self.t001)
-        self.t001.clicked.connect(lambda: self.Uncheck(self.t001))
 
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase5_Vanessa_First_Test'))
-        layout.addWidget(self.t001)
+
+    def create_checkboxes(self, tab_widget, items):
+        layout = QVBoxLayout(tab_widget)
+        for item in items:
+            if 'label' in item:
+                checkbox = QCheckBox(item['label'], tab_widget)
+                self.marks.append(checkbox)
+                checkbox.clicked.connect(lambda state, regionComboBox=checkbox: self.uncheck(regionComboBox))
+                layout.addWidget(checkbox)
+            elif 'text' in item:
+                label = QLabel(item['text'])
+                if 'bold' in item and item['bold']:
+                    layout.addStretch(1)
+                    label.setFont(self.myFont)
+                layout.addWidget(label)
         layout.addStretch()
-        self.tab1.setLayout(layout)
-
-    def tab2UI(self):
-        self.t003 = QCheckBox('003_I_test_purchases', self)
-        self.marks.append(self.t003)
-        self.t003.clicked.connect(lambda: self.Uncheck(self.t003))
-
-        self.t006 = QCheckBox('006_Debit_note', self)
-        self.marks.append(self.t006)
-        self.t006.clicked.connect(lambda: self.Uncheck(self.t006))
-
-        self.t0081 = QCheckBox('0081_Goods_issue_after_sales_invoice', self)
-        self.marks.append(self.t0081)
-        self.t0081.clicked.connect(lambda: self.Uncheck(self.t0081))
-
-        self.t0085 = QCheckBox('0085_Monkey_tests', self)
-        self.marks.append(self.t0085)
-        self.t0085.clicked.connect(lambda: self.Uncheck(self.t0085))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.3_Purchases_subsystem_tests'))
-        layout.addWidget(self.t003)
-        layout.addWidget(self.t006)
-        layout.addWidget(self.t0081)
-        layout.addWidget(self.t0085)
-        layout.addStretch()
-        self.tab2.setLayout(layout)
+        tab_widget.setLayout(layout)
 
-    def tab3UI(self):
-
-        self.t0031 = QCheckBox('0031_Purchases_reverse_charge', self)
-        self.marks.append(self.t0031)
-        self.t0031.clicked.connect(lambda: self.Uncheck(self.t0031))
-
-        self.t0032 = QCheckBox('0032_Purchases_ZERO_VAT', self)
-        self.marks.append(self.t0032)
-        self.t0032.clicked.connect(lambda: self.Uncheck(self.t0032))
-
-        self.t0034 = QCheckBox('0034_Stocktaking_documents', self)
-        self.marks.append(self.t0034)
-        self.t0034.clicked.connect(lambda: self.Uncheck(self.t0034))
 
-        self.t0035 = QCheckBox('0035_Goods_receipt', self)
-        self.marks.append(self.t0035)
-        self.t0035.clicked.connect(lambda: self.Uncheck(self.t0035))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.3_Purchases_subsystem_tests_2'))
 
-        layout.addWidget(self.t0031)
-        layout.addWidget(self.t0032)
-        layout.addWidget(self.t0034)
-        layout.addWidget(self.t0035)
-        layout.addStretch()
-        self.tab3.setLayout(layout)
+    def tab1UI(self, tab_widget):
+        items = [
+            {'text':  'Phase5_Vanessa_First_Test'},
+            {'label': '001_Company_tests'}
+        ]
+        self.create_checkboxes(tab_widget, items)
 
-    def tab4UI(self):
-
-        self.t0036 = QCheckBox('0036_Supplier_invoice_Continental', self)
-        self.marks.append(self.t0036)
-        self.t0036.clicked.connect(lambda: self.Uncheck(self.t0036))
-
-        self.t0037 = QCheckBox('0037_Subcontractor_order_Continental', self)
-        self.marks.append(self.t0037)
-        self.t0037.clicked.connect(lambda: self.Uncheck(self.t0037))
-
-        self.t0038 = QCheckBox('0038_Subcontractor_order_anglo-saxon', self)
-        self.marks.append(self.t0038)
-        self.t0038.clicked.connect(lambda: self.Uncheck(self.t0038))
-
-        self.t0039 = QCheckBox('0039_Assembly_Disassembly', self)
-        self.marks.append(self.t0039)
-        self.t0039.clicked.connect(lambda: self.Uncheck(self.t0039))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.3_Purchases_subsystem_tests_3'))
 
-        layout.addWidget(self.t0036)
-        layout.addWidget(self.t0037)
-        layout.addWidget(self.t0038)
-        layout.addWidget(self.t0039)
-        layout.addStretch()
-        self.tab4.setLayout(layout)
 
-    def tab5UI(self):
+    def tab2UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.3_Purchases_subsystem_tests'},
+            {'label': '003_I_test_purchases'},
+            {'label': '006_Debit_note'},
+            {'label': '0081_Goods_issue_after_sales_invoice'},
+            {'label': '0085_Monkey_tests'}
+        ]
+        self.create_checkboxes(tab_widget, items)
 
-        self.t0083 = QCheckBox('0083_Work_orders', self)
-        self.marks.append(self.t0083)
-        self.t0083.clicked.connect(lambda: self.Uncheck(self.t0083))
-
-        self.t008 = QCheckBox('008_FIFO', self)
-        self.marks.append(self.t008)
-        self.t008.clicked.connect(lambda: self.Uncheck(self.t008))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.4_Sales_test'))
-
-        layout.addWidget(self.t0083)
-        layout.addWidget(self.t008)
-        layout.addStretch()
-        self.tab5.setLayout(layout)
 
-    def tab6UI(self):
 
-        self.t002pt = QCheckBox('002_Payments_terms_Advance_payments', self)
-        self.marks.append(self.t002pt)
-        self.t002pt.clicked.connect(lambda: self.Uncheck(self.t002pt))
-
-        self.t0020pt = QCheckBox('002_Production', self)
-        self.marks.append(self.t0020pt)
-        self.t0020pt.clicked.connect(lambda: self.Uncheck(self.t0020pt))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.4_Sales_test_2'))
-
-        layout.addWidget(self.t002pt)
-        layout.addWidget(self.t0020pt)
-        layout.addStretch()
-        self.tab6.setLayout(layout)
-
-    def tab7UI(self):
-
-        self.t0051 = QCheckBox('0051_Credit_note_plus_GoodsReturn', self)
-        self.marks.append(self.t0051)
-        self.t0051.clicked.connect(lambda: self.Uncheck(self.t0051))
-
-        self.t0052 = QCheckBox('0052_Credit_note_do_not_use_GR_and_TI', self)
-        self.marks.append(self.t0052)
-        self.t0052.clicked.connect(lambda: self.Uncheck(self.t0052))
-
-        self.t0053 = QCheckBox('0053_Credit_note_withoutVat', self)
-        self.marks.append(self.t0053)
-        self.t0053.clicked.connect(lambda: self.Uncheck(self.t0053))
-
-        self.t0086 = QCheckBox('0086_Monkey_tests', self)
-        self.marks.append(self.t0086)
-        self.t0086.clicked.connect(lambda: self.Uncheck(self.t0086))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.4_Sales_test_3'))
-
-        layout.addWidget(self.t0051)
-        layout.addWidget(self.t0052)
-        layout.addWidget(self.t0053)
-        layout.addWidget(self.t0086)
-        layout.addStretch()
-        self.tab7.setLayout(layout)
-
-    def tab8UI(self):
-
-        self.t0082 = QCheckBox('0082_Retail_tests_sales_without_VAT', self)
-        self.marks.append(self.t0082)
-        self.t0082.clicked.connect(lambda: self.Uncheck(self.t0082))
-
-        self.t0081 = QCheckBox('0081_Retail_tests_operations_with_VAT', self)
-        self.marks.append(self.t0081)
-        self.t0081.clicked.connect(lambda: self.Uncheck(self.t0081))
-
-        self.t0041 = QCheckBox('0041_Loans_tests', self)
-        self.marks.append(self.t0041)
-        self.t0041.clicked.connect(lambda: self.Uncheck(self.t0041))
-
-        self.t0042 = QCheckBox('0042_Loans_tests', self)
-        self.marks.append(self.t0042)
-        self.t0042.clicked.connect(lambda: self.Uncheck(self.t0042))
-
-        self.t0043 = QCheckBox('0043_Loans_tests', self)
-        self.marks.append(self.t0043)
-        self.t0043.clicked.connect(lambda: self.Uncheck(self.t0043))
-
-        self.t0044 = QCheckBox('0044_Loans_tests', self)
-        self.marks.append(self.t0044)
-        self.t0044.clicked.connect(lambda: self.Uncheck(self.t0044))
-
-        self.t0045 = QCheckBox('0045_Foreign_currency_exchanges', self)
-        self.marks.append(self.t0045)
-        self.t0045.clicked.connect(lambda: self.Uncheck(self.t0045))
-
-        self.t0046 = QCheckBox('0046_AR_AP_adjustment', self)
-        self.marks.append(self.t0046)
-        self.t0046.clicked.connect(lambda: self.Uncheck(self.t0046))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.4_Sales_test_4'))
-
-        layout.addWidget(self.t0082)
-        layout.addWidget(self.t0081)
-        layout.addWidget(self.t0041)
-        layout.addWidget(self.t0042)
-        layout.addWidget(self.t0043)
-        layout.addWidget(self.t0044)
-        layout.addWidget(self.t0045)
-        layout.addWidget(self.t0046)
-
-        layout.addStretch()
-        self.tab8.setLayout(layout)
-
-    def tab9UI(self):
-
-        self.t002s = QCheckBox('002_Subcontracting', self)
-        self.marks.append(self.t002s)
-        self.t002s.clicked.connect(lambda: self.Uncheck(self.t002s))
-
-        self.t0021 = QCheckBox('0021_Direct_debit', self)
-        self.marks.append(self.t0021)
-        self.t0021.clicked.connect(lambda: self.Uncheck(self.t0021))
-
-        self.t007 = QCheckBox('007_I_test_users_creation', self)
-        self.marks.append(self.t007)
-        self.t007.clicked.connect(lambda: self.Uncheck(self.t007))
-
-        self.t009 = QCheckBox('009_CRM', self)
-        self.marks.append(self.t009)
-        self.t009.clicked.connect(lambda: self.Uncheck(self.t009))
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('Phase_5.4_Sales_test_5'))
-
-        layout.addWidget(self.t002s)
-        layout.addWidget(self.t0021)
-        layout.addWidget(self.t007)
-        layout.addWidget(self.t009)
-        layout.addStretch()
-        self.tab9.setLayout(layout)
-
-    def tab10UI(self):
-
-        self.flt = QCheckBox('I_start_my_first_launch_templates', self)
-        self.marks.append(self.flt)
-        self.flt.clicked.connect(lambda: self.Uncheck(self.flt))
-
-        self.fl = QCheckBox('I_start_my_first_launch', self)
-        self.marks.append(self.fl)
-        self.fl.clicked.connect(lambda: self.Uncheck(self.fl))
-
-        self.t0084 = QCheckBox('0084_Monkey_tests', self)
-        self.marks.append(self.t0084)
-        self.t0084.clicked.connect(lambda: self.Uncheck(self.t0084))
-
-        layout = QVBoxLayout()
-
-        layout.addWidget(QLabel('Phase_6_Smoke_tests'))
-        layout.addWidget(self.fl)
-        layout.addWidget(self.t0084)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Phase_10_Check_Update_Base_With_Templates'))
-        layout.addWidget(self.flt)
-
-        layout.addStretch()
-        self.tab10.setLayout(layout)
-
-    def tab11UI(self):
-
-        self.t098 = QCheckBox('0098_Accounting_templates', self)
-        self.marks.append(self.t098)
-        self.t098.clicked.connect(lambda: self.Uncheck(self.t098))
-
-        self.t099 = QCheckBox('0099_Manual_entries_and_subconto', self)
-        self.marks.append(self.t099)
-        self.t099.clicked.connect(lambda: self.Uncheck(self.t099))
-
-        self.t100 = QCheckBox('0100_Templates_in_invoices', self)
-        self.marks.append(self.t100)
-        self.t100.clicked.connect(lambda: self.Uncheck(self.t100))
-
-        self.t101 = QCheckBox('0101_Templates_in_documents_and_reports', self)
-        self.marks.append(self.t101)
-        self.t101.clicked.connect(lambda: self.Uncheck(self.t101))
-
-        self.t102 = QCheckBox('0102_Accounting_entries_data_register', self)
-        self.marks.append(self.t102)
-        self.t102.clicked.connect(lambda: self.Uncheck(self.t102))
-
-        self.t420 = QCheckBox('420_Templates')
-        self.marks.append(self.t420)
-        self.t420.clicked.connect(lambda: self.Uncheck(self.t420))  
-
-        layout = QVBoxLayout()
-
-        layout.addWidget(QLabel('Phase_7_Templates'))
-        layout.addWidget(self.t098)
-        layout.addWidget(self.t099)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Phase_7_Templates_2'))
-        layout.addWidget(self.t100)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Phase_7_Templates_3'))
-        layout.addWidget(self.t101)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Phase_7_Templates_4'))
-        layout.addWidget(self.t102)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('420_Templates (legacy/for regions):'))
-        layout.addWidget(self.t420)
-
-        layout.addStretch()
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Turn off tests on this tab before push! (Default values -> Run)'))
-        
-        self.tab11.setLayout(layout)
-    
-    def tab12UI(self):
-        
-        self.TE = QCheckBox('0089_Turkey_tests')
-        self.marks.append(self.TE)
-        self.TE.clicked.connect(lambda: self.Uncheck(self.TE))
-
-        self.CE = QCheckBox('0089_Colombian_tests')
-        self.marks.append(self.CE)
-        self.CE.clicked.connect(lambda: self.Uncheck(self.CE))       
-
-        self.GE = QCheckBox('0088_Germany_tests')
-        self.marks.append(self.GE)
-        self.GE.clicked.connect(lambda: self.Uncheck(self.GE))  
-
-        self.PE = QCheckBox('0087_Poland_tests')
-        self.marks.append(self.PE)
-        self.PE.clicked.connect(lambda: self.Uncheck(self.PE))
-
-        self.ME = QCheckBox('0089_Mexico_tests')
-        # self.marks.append(self.ME)
-        # self.ME.clicked.connect(lambda: self.Uncheck(self.ME))
-
-        # Temp
-        self.ME.setDisabled(1)
-        self.ME.setChecked(0)
-        # Temp
-
-
-
-        layout = QVBoxLayout()
-
-        layout.addWidget(QLabel('Turkey:'))
-        layout.addWidget(self.TE)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Colombia:'))
-        layout.addWidget(self.CE)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Germany:'))
-        layout.addWidget(self.GE)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Poland:'))
-        layout.addWidget(self.PE)
-
-        layout.addWidget(QLabel(''))
-        layout.addWidget(QLabel('Mexico:'))
-        layout.addWidget(self.ME)
-
-
-
-        layout.addStretch()
-        self.tab12.setLayout(layout)
-
-    def MarkUnmarkAll(self, btn):
+    def tab3UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.3_Purchases_subsystem_tests_2'},
+            {'label': '0031_Purchases_reverse_charge'},
+            {'label': '0032_Purchases_ZERO_VAT'},
+            {'label': '0034_Stocktaking_documents'},
+            {'label': '0035_Goods_receipt'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab4UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.3_Purchases_subsystem_tests_3'},
+            {'label': '0036_Supplier_invoice_Continental'},
+            {'label': '0037_Subcontractor_order_Continental'},
+            {'label': '0038_Subcontractor_order_anglo-saxon'},
+            {'label': '0039_Assembly_Disassembly'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab5UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.4_Sales_test'},
+            {'label': '0083_Work_orders'},
+            {'label': '008_FIFO'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab6UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.4_Sales_test_2'},
+            {'label': '002_Payments_terms_Advance_payments'},
+            {'label': '002_Production'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab7UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.4_Sales_test_3'},
+            {'label': '0051_Credit_note_plus_GoodsReturn'},
+            {'label': '0052_Credit_note_do_not_use_GR_and_TI'},
+            {'label': '0053_Credit_note_withoutVat'},
+            {'label': '0086_Monkey_tests'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab8UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.4_Sales_test_4'},
+            {'label': '0082_Retail_tests_sales_without_VAT'},
+            {'label': '0081_Retail_tests_operations_with_VAT'},
+            {'label': '0041_Loans_tests'},
+            {'label': '0042_Loans_tests'},
+            {'label': '0043_Loans_tests'},
+            {'label': '0044_Loans_tests'},
+            {'label': '0045_Foreign_currency_exchanges'},
+            {'label': '0046_AR_AP_adjustment'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab9UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_5.4_Sales_test_5'},
+            {'label': '002_Subcontracting'},
+            {'label': '0021_Direct_debit'},
+            {'label': '007_I_test_users_creation'},
+            {'label': '009_CRM'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab10UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_10_Check_Update_Base_With_Templates'},
+            {'label': 'I_start_my_first_launch_templates'},
+            {'text':  ' '},
+            {'text':  'Phase_6_Smoke_tests'},
+            {'label': 'I_start_my_first_launch'},
+            {'label': '0084_Monkey_tests'},
+            {'text':  'Reset tests on this tab before push! (Default values -> Run)', 'bold': True},
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab11UI(self, tab_widget):
+        items = [
+            {'text':  'Phase_7_Templates'},
+            {'label': '0098_Accounting_templates'},
+            {'text':  ' '},
+            {'text':  'Phase_7_Templates_2'},
+            {'label': '0100_Templates_in_invoices'},
+            {'text':  ' '},
+            {'text':  'Phase_7_Templates_3'},
+            {'label': '0101_Templates_in_documents_and_reports'},
+            {'text':  ' '},
+            {'text':  'Phase_7_Templates_4'},
+            {'label': '0102_Accounting_entries_data_register'},
+            {'text':  ' '},
+            {'text':  'Phase_7_Templates_5'},
+            {'label': '0103_Transferred_accounting_templates'},
+            {'text':  ' '},
+            {'text':  '420_Templates (legacy/for regions)'},
+            {'label': '420_Templates'},
+            {'text':  ' '},
+            {'text':  'Reset tests on this tab before push! (Default values -> Run)', 'bold': True},
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def tab12UI(self, tab_widget):
+        items = [
+            {'text':  'Turkey:'},
+            {'label': '0089_Turkey_tests'},
+            {'text':  ' '},
+            {'text':  'Colombia:'},
+            {'label': '0089_Colombian_tests'},
+            {'text':  ' '},
+            {'text':  'Germany:'},
+            {'label': '0088_Germany_tests'},
+            {'text':  ' '},
+            {'text':  'Poland:'},
+            {'label': '0087_Poland_tests'},
+            {'text':  ' '},
+            {'text':  'Mexico:'},
+            {'label': '0089_Mexico_tests'}
+        ]
+        self.create_checkboxes(tab_widget, items)
+
+
+
+    def markUnmarkAll(self, btn):
         if btn.isChecked() == False:
             for i in self.marks_temp:
-                i.setChecked(0)
+                i.setChecked(False)
         if btn.isChecked() == True:
             for i in self.marks_temp:
-                i.setChecked(1)
+                i.setChecked(True)
 
-    def DefaultCheckboxes(self, btn):
+
+
+    def defaultCheckboxes(self):
         for i in self.marks_temp:
             i.setChecked(1)
-            if i.text() == "0098_Accounting_templates":
+            if i.text() == "I_start_my_first_launch":
               i.setChecked(0)
-            if i.text() == "0099_Manual_entries_and_subconto":
+            if i.text() == "I_start_my_first_launch_templates":
+              i.setChecked(0)
+            if i.text() == "0098_Accounting_templates":
               i.setChecked(0)
             if i.text() == "0100_Templates_in_invoices":
               i.setChecked(0)
@@ -522,15 +345,20 @@ class tab(QTabWidget):
               i.setChecked(0)  
             if i.text() == "0102_Accounting_entries_data_register":
               i.setChecked(0)
+            if i.text() == "0103_Transferred_accounting_templates":
+              i.setChecked(0)
             if i.text() == "420_Templates":
               i.setChecked(0)  
 
-    def Uncheck(self, btn):
-        if btn.isChecked() == False:
-            self.markall.setChecked(0)
-        
-    def DoTheThings(self):
 
+
+    def uncheck(self, btn):
+        if btn.isChecked() == False:
+            self.markAllCheckBox.setChecked(0)
+        
+
+
+    def doTheThings(self):
         for i in self.marks:
             path_on = self.tests_dir_on + self.paths.get(i.text()) + "test/"
             path_off = self.tests_dir_off + self.paths.get(i.text()) + "test/"
@@ -539,7 +367,6 @@ class tab(QTabWidget):
 
                 if i.isChecked() == False:
                     if Path(str(path_on)).exists():
-                        # disable folders here
                         shutil.move(path_on, path_off)
                         if Path(str(path_off)).exists():
                             self.disabled.append(i.text())
@@ -553,7 +380,6 @@ class tab(QTabWidget):
 
                 if i.isChecked() == True:
                     if Path(str(path_off)).exists():
-                        # enable folders here
                         shutil.move(path_off, path_on)
                         if Path(str(path_on)).exists():
                             self.enabled.append(i.text())
@@ -565,7 +391,9 @@ class tab(QTabWidget):
                         self.skipped.append(i.text())
                         print("\n", i.text(), "already enabled, skipping!\n")
 
-    def ShowDialog(self):
+
+
+    def showDialog(self):
         enabled = "Tests enabled: " + str(len(self.enabled))
         disabled = 'Tests disabled: ' + str(len(self.disabled))
         error = 'Errors: ' + str(len(self.error))
@@ -573,15 +401,22 @@ class tab(QTabWidget):
 
         QMessageBox.about(self, "Done", enabled + '\n' + disabled + '\n' + skipped + '\n' + error)
 
-        
         self.enabled.clear()
         self.disabled.clear()
         self.error.clear()
         self.skipped.clear()
 
-    def CheckOnStart(self):
+
+    def openPathsWindow(self):
+        self.pathsWindow = PathsWindow()
+        self.pathsWindow.closed.connect(self.onPathsWindowClosed)
+        self.pathsWindow.show()
+
+
+    def checkOnStart(self):
         count = 0
         print("I'M IN")
+        print(self.marks_temp)
         for i in range(len(self.marks)):        
             catalog = self.paths.get(self.marks[i].text())
             if Path(self.tests_dir_on + catalog + "test/").exists() :
@@ -598,9 +433,9 @@ class tab(QTabWidget):
                 count = count + 1
 
         if count == len(self.marks):
-            self.markall.setChecked(1)
+            self.markAllCheckBox.setChecked(1)
         if count != len(self.marks):
-            self.markall.setChecked(0)
+            self.markAllCheckBox.setChecked(0)
 
         while 'Remove' in self.marks_temp:
             self.marks_temp.remove('Remove')
@@ -610,84 +445,178 @@ class tab(QTabWidget):
         print(self.tests_dir_on)
         print(self.tests_dir_off)
 
-    def ChangeRegion(self):
+
+
+    def changeRegion(self):
         for i in self.marks:
             self.tableLayout.removeWidget(i)
             print(i)
-            i = None
-        self.tableLayout.removeWidget(self.tab1)
-        self.tab1 = None
-        self.tableLayout.removeWidget(self.tab2)
-        self.tab2 = None
-        self.tableLayout.removeWidget(self.tab3)
-        self.tab3 = None
-        self.tableLayout.removeWidget(self.tab4)
-        self.tab4 = None
-        self.tableLayout.removeWidget(self.tab5)
-        self.tab5 = None
-        self.tableLayout.removeWidget(self.tab6)
-        self.tab6 = None
-        self.tableLayout.removeWidget(self.tab7)
-        self.tab7 = None
-        self.tableLayout.removeWidget(self.tab8)
-        self.tab8 = None
-        self.tableLayout.removeWidget(self.tab9)
-        self.tab9 = None
-        self.tableLayout.removeWidget(self.tab10)
-        self.tab10 = None
-        self.tableLayout.removeWidget(self.tab11)
-        self.tab11 = None
-        self.tableLayout.removeWidget(self.tab12)
-        self.tab12 = None
+            i.deleteLater()
 
-        self.marks = []
-        self.disabled = []
-        self.enabled = []
-        self.error = []
-        self.skipped = []
-        if str(self.cb.currentText()) == "Core Drive" :
-            self.GetPaths(1)
-        if str(self.cb.currentText()) == "Turkey" :
-            self.GetPaths(4)
-        if str(self.cb.currentText()) == "Colombia" :
-            self.GetPaths(7)
-        if str(self.cb.currentText()) == "Germany" :
-            self.GetPaths(10)
-        if str(self.cb.currentText()) == "Poland" :
-            self.GetPaths(13)
-        if str(self.cb.currentText()) == "Mexico" :
-            self.GetPaths(16)
-                   
-        self.CreateTabs()
+        for i in range(1, 13):
+            tab = getattr(self, f"tab{i}")
+            self.tableLayout.removeWidget(tab)
+            tab = None
+
+        self.initializeAttributes(str(self.regionComboBox.currentText()))
+ 
+        self.createTabs()
         self.marks_temp = self.marks.copy()
-        self.CheckOnStart()
+        self.checkOnStart()
         self.tabs.update()
 
-    def GetPaths(self, line):
-        data = open("paths.txt").read().splitlines()
-        print("\nCURRENT LINE:")
-        print(data[line])
-        self.tests_dir_on  = data[line] + "tests/RegressionTests/Yaml/Drive/"
-        self.tests_dir_off = data[line] + "RegressionTests_Disabled/Yaml/Drive/"
+
+
+    def getPaths(self, line):
+        app_data_dir = appdirs.user_data_dir('PhaseSwitcher', 'AlexEremeev')
+        os.makedirs(app_data_dir, exist_ok=True)
+        path_source = resource_path('conf/paths.json')
+        path_target = os.path.join(app_data_dir, 'paths.json')
+
+        if not os.path.exists(path_target):
+            shutil.copy(path_source, path_target)
+
+        with open(path_target, 'r') as f:
+            data = json.loads(str(f.read()))
+            directory_path = data.get(line, '')
+            print("LOAD JSON: ", directory_path)
+
+        self.tests_dir_on  = directory_path + "/tests/RegressionTests/Yaml/Drive/"
+        self.tests_dir_off = directory_path + "/RegressionTests_Disabled/Yaml/Drive/"
         print(self.tests_dir_on)
         print(self.tests_dir_off)
-        with open(resource_path('data.json'), 'r') as f:
+
+        with open(resource_path('conf/data.json'), 'r') as f:
             self.paths = json.loads(str(f.read()))
 
-    def GenerateGUID(self):
+
+
+    def generateGUID(self):
         self.guid = str(uuid.uuid4())
         self.guidField.setText(self.guid)
         pyperclip.copy(self.guid)
 
-    def CopyGUID(self):
+
+
+    def copyGUID(self):
         self.guid = self.guidField.text()
         pyperclip.copy(self.guid)
+    
+    def onPathsWindowClosed(self):
+        self.changeRegion()
+
+
+
+
+class PathsWindow(QWidget):
+
+    closed = QtCore.pyqtSignal()
+    
+    def __init__(self):
+        super().__init__()
+        self.setupUI()
+        self.loadPathsFromFile()
+        
+
+
+    def setupUI(self):
+        self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
+        self.setWindowTitle('Specify paths to projects')
+        self.setGeometry(200, 200, 370, 300)
+        self.createLabels()
+        self.createLayout()
+        self.setupLayout()
+
+
+
+    def createLabels(self):
+        self.labels = []
+        self.fields = []
+        self.paths = {}
+        for label_text in ['Core', 'Turkey', 'Colombia', 'Germany', 'Poland', 'Mexico']:
+            label = QLabel(label_text + ':')
+            label.setFixedWidth(60)
+            field = QLineEdit()
+            self.labels.append(label)
+            self.fields.append(field)
+            self.paths[label_text] = field
+
+
+
+    def createLayout(self):
+        self.pathsLayout = QVBoxLayout()
+        self.layouts = []
+        self.buttons = []
+
+        for label in self.labels:
+            layout = QHBoxLayout()
+            button = QPushButton(QIcon(resource_path('res/dots.png')), '')
+            button.clicked.connect(self.browsePath)
+
+            self.buttons.append(button)
+            self.layouts.append(layout)
+
+
+
+    def setupLayout(self):
+        for layout, label, button in zip(self.layouts, self.labels, self.buttons):
+            layout.addWidget(label)
+            layout.addWidget(self.paths[label.text()[:-1]])
+            layout.addWidget(button)
+            self.pathsLayout.addLayout(layout)
+
+        self.setLayout(self.pathsLayout)
+
+
+
+    def browsePath(self):
+        button = self.sender()
+        index = self.buttons.index(button)
+        directory = self.fields[index].text()
+        print(directory)
+        selected_directory = QFileDialog.getExistingDirectory(self, "Select Directory", directory)
+        if selected_directory:
+            label = self.labels[index]
+            self.paths[label.text()[:-1]].setText(selected_directory)
+            self.savePathsToFile()
+
+
+
+    def loadPathsFromFile(self):
+        app_data_dir = appdirs.user_data_dir('PhaseSwitcher', 'AlexEremeev')
+        self.path_target = os.path.join(app_data_dir, 'paths.json')
+
+        try:
+            with open(self.path_target, 'r') as file:
+                paths_data = json.load(file)
+                for label_text, field_text in paths_data.items():
+                    if label_text in self.paths:
+                        self.paths[label_text].setText(field_text)
+        except FileNotFoundError:
+            pass
+
+
+
+    def savePathsToFile(self):
+        with open(self.path_target, 'w') as file:
+            paths_data = {label_text: field.text() for label_text, field in self.paths.items()}
+            json.dump(paths_data, file, indent=4)
+
+
+    def closeEvent(self, event):
+        self.savePathsToFile()
+        self.closed.emit()  # Emit the closed signal
+        event.accept()
+
+
 
 def main():
     app = QApplication(sys.argv)
-    ex = tab()
+    ex = MainWindow()
     ex.show()
     sys.exit(app.exec())
+
+
 
 def resource_path(relative_path):
     try:
@@ -696,6 +625,8 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
-	
+
+
+
 if __name__ == '__main__':
    main()
