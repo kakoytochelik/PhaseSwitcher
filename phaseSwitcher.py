@@ -37,7 +37,7 @@ class MainWindow(QTabWidget):
 
     def setupUI(self):
         self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
-        self.setWindowTitle('Phase Switcher 5.1')
+        self.setWindowTitle('Phase Switcher 5.2')
         self.setGeometry(500, 200, 400, 350)
 
         self.createLayout()
@@ -101,7 +101,7 @@ class MainWindow(QTabWidget):
     def setupConnections(self):
         self.guidGenerateButton.clicked.connect(self.generateGUID)
         self.guidCopyButton.clicked.connect(self.copyGUID)
-        self.markAllCheckBox.clicked.connect(self.markUnmarkAll)
+        self.markAllCheckBox.clicked.connect(lambda: self.markUnmarkAll(self.markAllCheckBox))
         self.setDefaultButton.clicked.connect(self.defaultCheckboxes)
         self.regionComboBox.currentIndexChanged.connect(self.changeRegion)
         self.refreshButton.clicked.connect(self.changeRegion)
