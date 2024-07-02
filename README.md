@@ -1,6 +1,8 @@
 # Phase Switcher
 Easily manage the test phases!
-![screenshot1](https://github.com/kakoytochelik/PhaseSwitcher/assets/48015759/e3a18d42-a7d5-4401-a8ab-9f0b26ef99b0)
+![Ex9jgPVdbs](https://github.com/kakoytochelik/PhaseSwitcher/assets/48015759/e4815d45-fb75-4355-9dec-990b920ef3b0)
+
+
 
 
 ## Features
