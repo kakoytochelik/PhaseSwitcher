@@ -28,13 +28,12 @@ Each test requires a unique UUID, so if you create a new test, you can generate 
 
 ### Easy to maintain!
 If there will be a new region or a new test, all you need to do is:
-- For regions:
-  - Just add the new country to the `regionComboBox` in the `setupWidgets` method of the `MainWindow` class
-  - and in the `createLabels` method of the `PathsWindow` class
-- For new phases:
-  - add a new phase to `tab_info` in the `createTabs` method
-  - create a new `tab{N}UI` method that will define what is inside this phase
-- For tests:
-  - add a new path to `conf/data.json`
-  - then simply add a new `"label"` element with the name of the test to any `tab{N}UI` method
+- To add a new region:
+  - In `projects.json` add new line with the name and the path of the project
+  - Then load this file in Settings by clicking "Load Projects File"
+- To add new phases and tests:
+  - In `config.json` add a new phase to `tabs`, set it's `name`, which will be displayed on tab
+  - Inside `items` add new `test`, set if it must be enabled or disabled by `default`, and specify `path` to this test.
+  - Inside `items` you can also create a `label`, and add `note` to display it in the footer of the tab
+  - Then load this file in Settings by clicking "Load Config File"
 
