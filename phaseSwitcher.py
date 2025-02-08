@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import json
 import os
+import re
 import pyperclip
 import appdirs
 import uuid
@@ -10,6 +11,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6 import QtCore
+# import qdarktheme
 
 class MainWindow(QTabWidget):
 
@@ -32,8 +34,10 @@ class MainWindow(QTabWidget):
 
     def setupUI(self):
         self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
-        self.setWindowTitle('Phase Switcher 6')
-        self.setGeometry(500, 200, 400, 350)
+        self.setWindowTitle('Phase Switcher 6.9')
+        self.setGeometry(500, 200, 430, 512)
+        self.setMaximumWidth(550)
+        self.setMaximumHeight(640)
 
         self.createLayout()
         self.setupWidgets()
@@ -45,6 +49,7 @@ class MainWindow(QTabWidget):
         self.tableLayout = QVBoxLayout()
         self.headerLayout = QHBoxLayout()
         self.guidLayout = QHBoxLayout()
+        self.searchLayout = QHBoxLayout()
         self.runLayout = QHBoxLayout()
         self.tabs = QTabWidget()
 
@@ -53,7 +58,6 @@ class MainWindow(QTabWidget):
         self.headerLayout.addWidget(self.settingsButton)
         self.headerLayout.addWidget(self.regionComboBox)
         self.headerLayout.addWidget(self.refreshButton)
-        self.headerLayout.addWidget(self.setDefaultButton)
         self.headerLayout.addWidget(self.markAllCheckBox)
         self.tableLayout.addWidget(self.tabs)
 
@@ -62,7 +66,13 @@ class MainWindow(QTabWidget):
         self.guidLayout.addWidget(self.guidGenerateButton)
         self.guidLayout.addWidget(self.guidCopyButton)
 
+        self.tableLayout.addLayout(self.searchLayout)
+        self.searchLayout.addWidget(self.lastScenarioField)
+        self.searchLayout.addWidget(self.lastScenarioButton)
+
         self.tableLayout.addLayout(self.runLayout)
+        self.runLayout.addWidget(self.newScenarioButton, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.runLayout.addWidget(self.setDefaultButton, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
         self.runLayout.addWidget(self.runButton, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.setLayout(self.tableLayout)
@@ -70,23 +80,35 @@ class MainWindow(QTabWidget):
     def setupWidgets(self):
         self.guidField = QLineEdit(self)
         self.guidField.setReadOnly(True)
-        self.guidField.setPlaceholderText("GUID")
+        self.guidField.setPlaceholderText("UID")
 
-        self.guidGenerateButton = QPushButton(QIcon(resource_path('res/refresh.png')), '')
-        self.guidCopyButton = QPushButton(QIcon(resource_path('res/copy.png')), '')
+        self.lastScenarioField = QLineEdit(self)
+        self.lastScenarioField.setPlaceholderText("Find the last test number. Enter your prefix (eg. 12)")
+        self.lastScenarioButton = QPushButton(QIcon(resource_path('res/search.svg')), '')
+
+        self.lastScenarioButton.setFixedWidth(66)
+
+        self.guidGenerateButton = QPushButton(QIcon(resource_path('res/refresh.svg')), '')
+        self.guidGenerateButton.setFixedWidth(30)
+        self.guidCopyButton = QPushButton(QIcon(resource_path('res/copy.svg')), '')
+        self.guidCopyButton.setFixedWidth(30)
         self.markAllCheckBox = QCheckBox('Select all', self)
-        self.setDefaultButton = QPushButton(QIcon(resource_path('res/defaults.png')), "Default values")
+        self.setDefaultButton = QPushButton(QIcon(resource_path('res/defaults.svg')), "Default values")
         self.regionComboBox = QComboBox()
-        self.settingsButton = QPushButton(QIcon(resource_path('res/configuration.png')), "")
-        self.refreshButton = QPushButton(QIcon(resource_path('res/refresh.png')), "Refresh")
-        self.runButton = QPushButton(QIcon(resource_path('res/continue.png')), "Run")
+        self.regionComboBox.setFixedWidth(100)
+        self.settingsButton = QPushButton(QIcon(resource_path('res/configuration.svg')), "Settings")
+        self.settingsButton.setFixedWidth(100)
+        self.refreshButton = QPushButton(QIcon(resource_path('res/refresh.svg')), "Refresh")
+        self.refreshButton.setFixedWidth(100)
+        self.runButton = QPushButton(QIcon(resource_path('res/apply.svg')), "Apply changes")
+        self.newScenarioButton = QPushButton(QIcon(resource_path('res/add.svg')), "Create scenario")
 
         self.loadRegions()
         self.createTabs()
         self.marks_temp = self.marks.copy()
 
     def setupConnections(self):
-        self.guidGenerateButton.clicked.connect(self.generateGUID)
+        self.guidGenerateButton.clicked.connect(lambda: generateGUID(self, self.guidField))
         self.guidCopyButton.clicked.connect(self.copyGUID)
         self.markAllCheckBox.clicked.connect(lambda: self.markUnmarkAll(self.markAllCheckBox))
         self.setDefaultButton.clicked.connect(self.defaultCheckboxes)
@@ -95,6 +117,8 @@ class MainWindow(QTabWidget):
         self.runButton.clicked.connect(self.doTheThings)
         self.runButton.clicked.connect(self.showDialog)
         self.settingsButton.clicked.connect(self.openPathsWindow)
+        self.newScenarioButton.clicked.connect(self.openNewScenarioWindow)
+        self.lastScenarioButton.clicked.connect(self.updateLastScenario)
 
     def loadConfig(self):
         app_data_dir = appdirs.user_data_dir('PhaseSwitcher6', 'AlexEremeev')
@@ -234,6 +258,39 @@ class MainWindow(QTabWidget):
         self.pathsWindow.configUpdated.connect(self.reloadConfig)
         self.pathsWindow.show()
 
+    def openNewScenarioWindow(self):
+        default_folder = self.tests_dir_on + "Parent scenarios/"
+        self.NewScenWindow = NewMainScenarioWindow(default_folder)
+        self.NewScenWindow.show()
+
+
+    def updateLastScenario(self):
+        prefix = self.lastScenarioField.text().strip()
+        if not prefix.isdigit() or len(prefix) != 2:
+            self.lastScenarioField.setStyleSheet("color: red;")
+            return
+        self.lastScenarioField.setStyleSheet("")
+
+        scenarios_path = self.tests_dir_on
+        last_scenario_number = self.searchScenariosByPrefix(scenarios_path, prefix)
+        self.lastScenarioField.setText(last_scenario_number if last_scenario_number else "Not found")
+
+    def searchScenariosByPrefix(self, path, prefix):
+        if not os.path.exists(path):
+            return None
+
+        scenario_numbers = {}
+        for root, dirs, _ in os.walk(path):
+            for folder in dirs:
+                match = re.match(r'(0*' + prefix + r'\d+)', folder) 
+                if match:
+                    original_name = match.group(1)
+                    numeric_value = int(original_name)
+                    scenario_numbers[numeric_value] = original_name
+
+        if scenario_numbers:
+            return scenario_numbers[max(scenario_numbers)]
+        return None
     def checkOnStart(self):
         count = 0
         print("I'M IN")
@@ -311,11 +368,6 @@ class MainWindow(QTabWidget):
         print(self.tests_dir_on)
         print(self.tests_dir_off)
 
-    def generateGUID(self):
-        self.guid = str(uuid.uuid4())
-        self.guidField.setText(self.guid)
-        pyperclip.copy(self.guid)
-
     def copyGUID(self):
         self.guid = self.guidField.text()
         pyperclip.copy(self.guid)
@@ -351,6 +403,10 @@ class PathsWindow(QWidget):
         self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
         self.setWindowTitle('Settings')
         self.setGeometry(200, 200, 370, 300)
+        self.setMaximumWidth(370)
+        self.setMinimumWidth(370)
+        self.setMinimumHeight(300)
+
         
         self.mainLayout = QVBoxLayout()
         self.setLayout(self.mainLayout)
@@ -364,6 +420,29 @@ class PathsWindow(QWidget):
         self.scrollArea.setWidgetResizable(True)
         self.pathsLayout = QVBoxLayout(self.scrollAreaWidgetContents)
         self.mainLayout.addWidget(self.scrollArea)
+
+        # self.themeLayout = QHBoxLayout()
+        # self.themeCheckBox = QCheckBox('Dark theme', self)
+        # self.themeLayout.addWidget(self.themeCheckBox)
+        # self.mainLayout.addLayout(self.themeLayout)
+        # self.themeCheckBox.clicked.connect(lambda: self.toggleTheme(self.themeCheckBox))
+
+
+    def toggleTheme(self, isDark):
+        if isDark.isChecked() == True:
+            qdarktheme.setup_theme("dark")
+            self.setStyleSheet("""
+                QPushButton {
+                    color: white;
+                }
+            """)
+        if isDark.isChecked() == False:
+            qdarktheme.setup_theme("light")
+            self.setStyleSheet("""
+                QPushButton {
+                    color: black;
+                }
+            """)
 
     def createButtonsLayout(self):
         self.buttonsLayout = QHBoxLayout()
@@ -408,7 +487,7 @@ class PathsWindow(QWidget):
             self.paths_dict[label_text] = field
 
             layout = QHBoxLayout()
-            button = QPushButton(QIcon(resource_path('res/folder.png')), '')
+            button = QPushButton(QIcon(resource_path('res/folder.svg')), '')
             button.setFixedWidth(30)
             button.clicked.connect(self.browsePath)
             self.buttons.append(button)
@@ -479,12 +558,171 @@ class PathsWindow(QWidget):
             field.setText(self.paths.get(label_text, ""))
 
 
+class NewMainScenarioWindow(QWidget):
+
+    def __init__(self, default_folder):
+        super().__init__()
+        self.setWindowIcon(QIcon(resource_path('res/icon.ico')))
+        self.setWindowTitle("New Scenario")
+        self.setGeometry(450, 350, 480, 220)
+        self.setFixedSize(480, 220)
+
+        self.isMain = False
+
+        self.mainLayout = QVBoxLayout()
+        self.setLayout(self.mainLayout)
+
+        # Scrollable Area
+        self.scrollArea = QScrollArea()
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.scrollArea.setWidgetResizable(True)
+        self.formLayout = QVBoxLayout(self.scrollAreaWidgetContents)
+        
+        # Is Main Checkbox
+        isMainLayout = QHBoxLayout()
+        self.isMainCheckBox = QCheckBox('Main scenario', self)
+        self.isMainCheckBox.setChecked(False)
+        isMainLayout.addWidget(self.isMainCheckBox)
+        self.formLayout.addLayout(isMainLayout)
+
+        # Name Field
+        nameLayout = QHBoxLayout()
+        self.name_field = QLineEdit()
+        self.name_field.setPlaceholderText("Name")
+        # nameLayout.addWidget(self.name_label)
+        nameLayout.addWidget(self.name_field)
+        self.formLayout.addLayout(nameLayout)
+
+        # Code Field
+        # codeLayout = QHBoxLayout()
+        self.code_field = QLineEdit()
+        self.code_field.setPlaceholderText("Code")
+        # codeLayout.addWidget(self.code_label)
+        # codeLayout.addWidget(self.code_field)
+        nameLayout.addWidget(self.code_field)
+        self.code_field.setFixedWidth(90)
+        # self.formLayout.addLayout(codeLayout)
+        self.code_field.setDisabled(False)
+
+        # UID Field (Read-only, Auto-generated)
+        uidLayout = QHBoxLayout()
+        self.uid_label = QLabel("UID:")
+        self.uid_label.setFixedWidth(35)
+        self.uid_field = QLineEdit()
+        self.uid_field.setReadOnly(True)
+        self.uid_field.setText(str(uuid.uuid4()))
+        uidLayout.addWidget(self.uid_label)
+        uidLayout.addWidget(self.uid_field)
+        self.guidGenerateButton = QPushButton(QIcon(resource_path('res/refresh.svg')), '')
+        self.guidGenerateButton.setFixedWidth(30)
+        self.guidGenerateButton.clicked.connect(lambda: generateGUID(self, self.uid_field))
+        uidLayout.addWidget(self.guidGenerateButton)
+
+
+        self.formLayout.addLayout(uidLayout)
+
+        # Folder Field
+        folderLayout = QHBoxLayout()
+        self.folder_label = QLabel("Folder:")
+        self.folder_label.setFixedWidth(35)
+        self.folder_field = QLineEdit()
+        self.folder_field.setText(default_folder)
+        self.folder_button = QPushButton(QIcon(resource_path('res/folder.svg')), '')
+        self.folder_button.setFixedWidth(30)
+        self.folder_button.clicked.connect(self.browse_folder)
+        folderLayout.addWidget(self.folder_label)
+        folderLayout.addWidget(self.folder_field)
+        folderLayout.addWidget(self.folder_button)
+        self.formLayout.addLayout(folderLayout)
+
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.mainLayout.addWidget(self.scrollArea)
+
+        # Create Button
+        self.submit_button = QPushButton("Create")
+        self.mainLayout.addWidget(self.submit_button)
+        self.submit_button.clicked.connect(self.create_scenario)
+
+        self.isMainCheckBox.clicked.connect(lambda: self.isMainScenario(self.isMainCheckBox))
+
+
+    def isMainScenario(self, isMain):
+        if isMain.isChecked() == False:
+            self.code_field.setDisabled(False)
+            self.isMain = False
+
+
+        if isMain.isChecked() == True:
+            self.code_field.setDisabled(True)
+            self.isMain = True
+
+
+    def browse_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Folder", self.folder_field.text())
+        if folder:
+            self.folder_field.setText(folder)
+
+
+    def create_scenario(self):
+        name = self.name_field.text().strip()
+        code = self.code_field.text().strip()
+        uid = self.uid_field.text()
+        folder = self.folder_field.text().strip()
+        
+        if not name:
+            QMessageBox.warning(self, "Error", "Name field cannot be empty!")
+            return
+
+        elif not code and self.isMain == False:
+            QMessageBox.warning(self, "Error", "Code field cannot be empty!")
+            return
+        
+
+        if self.isMain == True:
+            scen_template = resource_path('res/main.yaml')
+            test_template = resource_path('res/test.yaml')
+            scenario_path = os.path.join(folder, name)
+            os.makedirs(os.path.join(scenario_path, "test"), exist_ok=True)
+
+            with open(test_template, 'r', encoding='utf-8') as f:
+                test_content = f.read().replace("Name_Placeholder", name).replace("UID_Placeholder", uid).replace("Random_UID", str(uuid.uuid4()))
+            
+            with open(os.path.join(scenario_path, "test", f"{name}.yaml"), 'w', encoding='utf-8') as f:
+                f.write(test_content)
+
+            with open(scen_template, 'r', encoding='utf-8') as f:
+                scen_content = f.read().replace("Name_Placeholder", name).replace("Code_Placeholder", name).replace("UID_Placeholder", uid)
+
+
+        if self.isMain == False:
+            scen_template = resource_path('res/scen.yaml')
+            scenario_path = os.path.join(folder, code)
+            os.makedirs(os.path.join(scenario_path), exist_ok=True)
+            with open(scen_template, 'r', encoding='utf-8') as f:
+                scen_content = f.read().replace("Name_Placeholder", name).replace("Code_Placeholder", code).replace("UID_Placeholder", uid)
+
+        with open(os.path.join(scenario_path, "scen.yaml"), 'w', encoding='utf-8') as f:
+            f.write(scen_content)
+        
+        
+        QMessageBox.information(self, "Success", f"Scenario \"{name}\" has been created in: \n\n{scenario_path}\n\nIf it's a main scenario, don't forget to include it in the config (See readme)")
+        self.close()
 
 def main():
     app = QApplication(sys.argv)
     ex = MainWindow()
+
+    # qdarktheme.setup_theme(theme="light", custom_colors={"foreground>disabled": "#D0BCFF"})
+
     ex.show()
     sys.exit(app.exec())
+
+
+def generateGUID(self, guidField):
+    self.guid = str(uuid.uuid4())
+    guidField.setText(self.guid)
+    pyperclip.copy(self.guid)
 
 def resource_path(relative_path):
     try:
